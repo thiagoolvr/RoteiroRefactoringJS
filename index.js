@@ -6,16 +6,16 @@ function formatarMoeda(valor) {
       minimumFractionDigits: 2 }).format(valor/100);
 }
 
-function getPeca(apresentacao) {
-  return pecas[apresentacao.id];
-}
-
 class ServicoCalculoFatura {
+
+  constructor(repo) {
+    this.repo = repo;
+  }
 
   calcularCredito(apre) {
     let creditos = 0;
     creditos += Math.max(apre.audiencia - 30, 0);
-    if (getPeca(apre).tipo === "comedia") 
+    if (this.repo.getPeca(apre).tipo === "comedia") 
       creditos += Math.floor(apre.audiencia / 5);
     return creditos;   
   }
@@ -30,7 +30,7 @@ class ServicoCalculoFatura {
 
   calcularTotalApresentacao(apre) {
     let total = 0;
-    switch (getPeca(apre).tipo) {
+    switch (this.repo.getPeca(apre).tipo) {
       case "tragedia":
         total = 40000;
         if (apre.audiencia > 30) {
@@ -60,11 +60,21 @@ class ServicoCalculoFatura {
 
 }
 
+class Repositorio {
+  constructor() {
+    this.pecas = JSON.parse(readFileSync('./pecas.json'));
+  }
+
+  getPeca(apre) {
+    return this.pecas[apre.id];
+  }
+}
+
 function gerarFaturaStr (fatura, calc) {
   let faturaStr = `Fatura ${fatura.cliente}\n`;
 
   for (let apre of fatura.apresentacoes) {
-    faturaStr += `  ${getPeca(apre).nome}: ${formatarMoeda(calc.calcularTotalApresentacao(apre))} (${apre.audiencia} assentos)\n`;
+    faturaStr += `  ${calc.repo.getPeca(apre).nome}: ${formatarMoeda(calc.calcularTotalApresentacao(apre))} (${apre.audiencia} assentos)\n`;
   }
   faturaStr += `Valor total: ${formatarMoeda(calc.calcularTotalFatura(fatura.apresentacoes))}\n`;
   faturaStr += `Créditos acumulados: ${calc.calcularTotalCreditos(fatura.apresentacoes)} \n`;
@@ -87,9 +97,6 @@ function gerarFaturaStr (fatura, calc) {
 // }
 
 const faturas = JSON.parse(readFileSync('./faturas.json'));
-const pecas = JSON.parse(readFileSync('./pecas.json'));
-const calc = new ServicoCalculoFatura();
+const calc = new ServicoCalculoFatura(new Repositorio());
 const faturaStr = gerarFaturaStr(faturas, calc);
-// const faturaHTML = gerarFaturaHTML(faturas, calc);
 console.log(faturaStr);
-// console.log(faturaHTML);
